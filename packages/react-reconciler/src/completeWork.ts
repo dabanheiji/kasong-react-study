@@ -6,13 +6,18 @@ import {
 	Instance
 } from 'hostConfig';
 import { FiberNode } from './fiber';
-import { NoFlags } from './fiberFlags';
+import { NoFlags, Update } from './fiberFlags';
 import {
 	FunctionComponent,
 	HostComponent,
 	HostRoot,
 	HostText
 } from './workTags';
+import { updateFiberProps } from 'react-dom/src/SyntheticEvent';
+
+function markUpdate(fiber: FiberNode) {
+	fiber.flags |= Update;
+}
 
 // 递归中的归
 export const completeWork = (wip: FiberNode): FiberNode | null => {
@@ -24,6 +29,9 @@ export const completeWork = (wip: FiberNode): FiberNode | null => {
 		case HostComponent:
 			if (current !== null && wip.stateNode) {
 				// update
+				// 1. 判断props是否变化
+				// 2. 变了的Update flag
+				updateFiberProps(wip.stateNode, newProps);
 			} else {
 				// 1. 创建DOM
 				const instance = createInstance(wip.type, newProps);
@@ -36,6 +44,11 @@ export const completeWork = (wip: FiberNode): FiberNode | null => {
 		case HostText:
 			if (current !== null && wip.stateNode) {
 				// update
+				const oldText = current.memoizedProps.content;
+				const newText = newProps.content;
+				if (oldText !== newText) {
+					markUpdate(wip);
+				}
 			} else {
 				// 1. 创建DOM
 				const instance = createTextInstance(newProps.content);
